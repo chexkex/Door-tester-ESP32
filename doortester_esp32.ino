@@ -50,9 +50,14 @@ int totalPulse = 0;
 int totalDiffPulse = 0;
 int maxPulse100ms = 0;
 int newPulse100ms = 0;
-int pulseCloseToEnd = 10; //When program shoud look for end of test higher number more accurate
+int pulseCloseToEnd = 20; //When program shoud look for end of test higher number more accurate
 int tempTotalPulse = 0;
-int totalPulsebefore = 0;
+int totalPulsebefore1 = 0;
+int totalPulsebefore2 = 0;
+int hallpin1 = 5; //Hallpin 1
+int hallpin2 = 15; //Hallpin 2
+int totalPulseBefore = 0;
+
 
 //Relay outputs
 int relayOpenDoor = 26;
@@ -61,11 +66,13 @@ int relayDoorSwitch = 25;
 //Timer variables
 unsigned long nowTime = 0;
 unsigned long relayOpenDoorTime = 0;
+unsigned long relayDoorSwitchtTime = 0;
 unsigned long waitTimeForStart = 0;
 unsigned long waitTimeWhenTestIsDone = 0;
 unsigned long waitTimeDataSend = 0;
 unsigned long printCon = 0;
 unsigned long totalPulseBehind = 0;
+unsigned long timer100ms = 0;
 
 //Calibration factor for current sensor 
 int callFactorSernsor1 = 0;
@@ -76,18 +83,29 @@ int callFactorSernsor3 = 0;
 bool printForceValues = false;
 bool printCurrentValues = false;
 
+//Hallsensor interupt
+void IRAM_ATTR HallSensor(){
+    totalPulse++;
+    if(digitalRead(hallpin2) == LOW){totalDiffPulse++;}
+    else{totalDiffPulse--;} 
+  }
 
 
 void setup() {
   Serial.begin(9600);
   pinMode(relayOpenDoor, OUTPUT);
   pinMode(relayDoorSwitch , OUTPUT);
+  pinMode(hallpin1, INPUT);
+  pinMode(hallpin2, INPUT);
   digitalWrite(relayOpenDoor, HIGH);
-  digitalWrite(relayDoorSwitch, HIGH);
+  digitalWrite(relayDoorSwitch, LOW);
   Wire.begin();
   ADS.begin();
   EEPROM.begin(512);
   scale.begin(LOADCELL_DOUT_PIN, LOADCELL_SCK_PIN);
+
+  attachInterrupt(digitalPinToInterrupt(hallpin1), HallSensor, FALLING);
+  
 }
 
 void loop() {
@@ -96,8 +114,6 @@ void loop() {
   nowTime = millis();
   //reading Serialport
   if(Serial.available() > 0){
-    
-       
         lastDataResived = Serial.readStringUntil('\n');
         lastDataResivedChecksum = ChecksumCalculator(lastDataResived);
         lastDataResivedIntNoChecksum = lastDataResived.substring(0 , 6).toInt();
@@ -112,7 +128,7 @@ void loop() {
           else{Serial.println(AddChecksum(411117)); lastDataSentNoChecksum = 411117;}
         }
         else if(lastDataResivedIntNoChecksum == 111111){
-          
+              
               if(startTestOk){
                 Serial.println(AddChecksum(111112)); 
                 lastDataSentNoChecksum = 111112; 
@@ -125,15 +141,17 @@ void loop() {
                 totalDiffPulse = 0;
                 maxPulse100ms = 0;
                 CalibrateCurrentSensor();
-                relayOpenDoorTime = nowTime + 1000;
+                relayOpenDoorTime = nowTime + 500;
+                relayDoorSwitchtTime = nowTime + 300;
                 waitTimeForStart = nowTime + 5000;
+                timer100ms = nowTime;
                 digitalWrite(relayOpenDoor, LOW);
                 restetScaleOnec = true;
 
                 loadcellCallFactorNum = readFloatFromEEPROM(loadcellCallFactorResultAdress) / readFloatFromEEPROM(loadcellCallFactorAdress);
 
                 scale.set_scale(loadcellCallFactorNum);
-                
+                                
                 }
               else{Serial.println(AddChecksum(111113)); lastDataSentNoChecksum = 111113;}
           
@@ -167,6 +185,7 @@ void loop() {
   if(testStarted){
     
       if(relayOpenDoorTime < nowTime){digitalWrite(relayOpenDoor, HIGH);}
+      if(relayDoorSwitchtTime < nowTime && totalPulse > 20){digitalWrite(relayDoorSwitch, HIGH);}
       if(totalPulse > 500 && restetScaleOnec){scale.tare(); restetScaleOnec = false;}
       newCurrent1 = ReadCurrentFrom(0, callFactorSernsor1);
       newCurrent2 = ReadCurrentFrom(1, callFactorSernsor2);
@@ -178,7 +197,17 @@ void loop() {
       if(newCurrent3 > maxCurrent3){maxCurrent3 = newCurrent3;}
       if(newPulse100ms > maxPulse100ms){maxPulse100ms = newPulse100ms;}
 
-      if(totalPulseBehind + 3000 < nowTime){totalPulsebefore = totalPulse; totalPulseBehind;}
+
+      //Se över HUR DETTA FUNGEAR MED STOPPA TEST SE KONSTIGT UT!!!!!!!
+      if(totalPulseBehind + 3000 < nowTime){totalPulseBehind = nowTime; totalPulsebefore2 = totalPulsebefore1; totalPulsebefore1 = totalPulse;}
+
+      if(timer100ms + 100 < nowTime){
+
+        newPulse100ms = totalPulse - totalPulseBefore;
+        totalPulseBefore = totalPulse;
+        timer100ms = nowTime;
+        
+        }
 
   }
 
@@ -186,7 +215,9 @@ void loop() {
   if(testStarted && (waitTimeForStart < nowTime)){
     
         tempTotalPulse = totalPulse / pulseCloseToEnd;
-        if (tempTotalPulse > totalDiffPulse && totalPulse > (totalPulseBehind - 3) && totalPulse < (totalPulseBehind + 3)){
+        if(tempTotalPulse > totalDiffPulse){
+          digitalWrite(relayDoorSwitch, LOW);
+        if (totalPulse > (totalPulsebefore2 - 3) && totalPulse < (totalPulsebefore2 + 3)){
 
             //Calling test is over          
             if(waitTimeWhenTestIsDone < nowTime){
@@ -205,6 +236,7 @@ void loop() {
           
           }
           else{waitTimeWhenTestIsDone = nowTime + 2000;}
+        }
     
     }
 
