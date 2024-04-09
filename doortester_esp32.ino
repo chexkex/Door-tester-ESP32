@@ -1,6 +1,9 @@
 //Loading lib
 #include "HX711.h"
 #include "ADS1X15.h"
+#include <Arduino.h>
+#include <freertos/FreeRTOS.h>
+#include <freertos/task.h>
 #include <EEPROM.h>
 
 ADS1115 ADS(0x48);
@@ -53,7 +56,7 @@ int newCurrent3;
 //Speed variables
 int totalPulse = 0;
 int totalDiffPulse = 0;
-unsigned long maxPulse100ms = 0;
+int maxPulse100ms = 10000;
 int newPulse100ms = 0;
 int pulseCloseToEnd = 20; //When program shoud look for end of test higher number more accurate
 int tempTotalPulse = 0;
@@ -62,6 +65,7 @@ int totalPulsebefore2 = 0;
 int hallpin1 = 5; //Hallpin 1
 int hallpin2 = 15; //Hallpin 2
 int totalPulseBefore = 0;
+int timeFor10PulsesInt = 0;
 
 
 //Relay outputs
@@ -79,6 +83,7 @@ unsigned long printCon = 0;
 unsigned long totalPulseBehind = 0;
 unsigned long timer100ms = 0;
 unsigned long times100msControle = 0;
+unsigned long timeReadLoadcell = 0;
 
 //Test fos speed in interupt
 /*unsigned long timeBetweenRead = 0;
@@ -137,11 +142,22 @@ void setup() {
 
   attachInterrupt(digitalPinToInterrupt(hallpin1), HallSensor, FALLING);
   startTestOk = true;
+
+  //Starting its second core
+   xTaskCreatePinnedToCore(
+    secondTask,   // Funktionen för den andra uppgiften
+    "SecondTask", // Namn på uppgiften
+    10000,        // Stackstorlek för uppgiften (i byte)
+    NULL,         // Inga parametrar för funktionen
+    1,            // Prioritet för uppgiften (1 är normalt)
+    NULL,         // Inget handtag till uppgiften
+    0             // Vilken kärna att köra uppgiften på (0 eller 1)
+  );
   
 }
 
 void loop() {
-
+  
   nowTime = millis();
   if(Serial.available() > 0){ReadSerialData();}
   //If test is started sensors are messuring. Reading sensors and add to max if its bigger
@@ -149,21 +165,21 @@ void loop() {
       
       if(relayOpenDoorTime < nowTime){digitalWrite(relayOpenDoor, HIGH);}
       if(relayDoorSwitchtTime < nowTime && totalPulse > 20 && relayDoorSwitchOnce){digitalWrite(relayDoorSwitch, HIGH); relayDoorSwitchOnce=false;}
-      if(totalPulse > 500 && restetScaleOnec){scale.tare(); restetScaleOnec = false;}
-      else if(!restetScaleOnec){newForce = abs(10 * scale.get_units());}
+      
       
       newCurrent1 = ReadCurrentFrom(0, callFactorSernsor1);
       newCurrent2 = ReadCurrentFrom(1, callFactorSernsor2);
       newCurrent3 = ReadCurrentFrom(2, callFactorSernsor3);
     
-      if(newForce > maxForce){maxForce = newForce;}
+      if(newForce > maxForce && !restetScaleOnec){maxForce = newForce;}
       if(newCurrent1 > maxCurrent1){maxCurrent1 = newCurrent1;}
       if(newCurrent2 > maxCurrent2){maxCurrent2 = newCurrent2;}
       if(newCurrent3 > maxCurrent3){maxCurrent3 = newCurrent3;}
-      if(timeFor10Pulses < maxPulse100ms && maxPulse100ms < 9999){maxPulse100ms = newPulse100ms;}
-
+      if(timeFor10PulsesInt < maxPulse100ms && timeFor10PulsesInt < 9999 && timeFor10PulsesInt > 2){maxPulse100ms = timeFor10PulsesInt;}
+      
       if(totalPulseBehind + 3000 < nowTime){totalPulseBehind = nowTime; totalPulsebefore2 = totalPulsebefore1; totalPulsebefore1 = totalPulse;}
-      maxPulse100ms = ((int)timeFor10Pulses / 10);
+      timeFor10PulsesInt = ((int)timeFor10Pulses / 10);
+      Serial.println(totalPulse);
       /*if(timer100ms + 100 < nowTime){
 
         unsigned long tempTime = nowTime - times100msControle;
@@ -217,6 +233,7 @@ void loop() {
 
   //Send data
   if(!testStarted){
+      digitalWrite(relayDoorSwitch, LOW);
       int maxForceInt = maxForce;
       if(waitTimeDataSend + 200 < nowTime && sendForceOnce){Serial.println(AddChecksum((120000 + maxForceInt))); lastDataSentNoChecksum = (120000 + maxForce); sendForceOnce = false;}
       if(waitTimeDataSend + 400 < nowTime && sendCurrent1Once){Serial.println(AddChecksum((130000 + maxCurrent1))); lastDataSentNoChecksum = (130000 + maxCurrent1); sendCurrent1Once = false;}
