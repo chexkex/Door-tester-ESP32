@@ -99,21 +99,6 @@ int callFactorSernsor3 = 0;
 bool printForceValues = false;
 bool printCurrentValues = false;
 
-/*
-//Hallsensor interupt
-void IRAM_ATTR HallSensor(){
-    totalPulse++;
-    pulsesBetweenTime++;
-    if(pulsesBetweenTime == 10){
-      timeFor10Pulses = nowTime - timeBetweenRead;
-      timeBetweenRead = nowTime;
-      pulsesBetweenTime = 0;
-      
-      }
-    if(digitalRead(hallpin2) == LOW){totalDiffPulse++;}
-    else{totalDiffPulse--;} 
-  }*/
-
 void IRAM_ATTR HallSensor() {
   totalPulse++;
   pulsesBetweenTime++;
@@ -157,98 +142,11 @@ void setup() {
 
 void loop() {
 
-  
   nowTime = millis();
-  //reading Serialport
-  if(Serial.available() > 0){
-        lastDataResived = Serial.readStringUntil('\n');
-        lastDataResivedChecksum = ChecksumCalculator(lastDataResived);
-        lastDataResivedIntNoChecksum = lastDataResived.substring(0 , 6).toInt();
-        lastChecksumResived = lastDataResived.substring(6).toInt();
-
-        if(lastChecksumResived != lastDataResivedChecksum){Serial.println(AddChecksum(111121));}
-         
-        else if(lastDataResivedIntNoChecksum == 111122){Serial.println(AddChecksum(lastDataSentNoChecksum.toInt()));}
-        else if(loadcellCall){
-          if(lastDataResivedIntNoChecksum == 411113){loadcellCallNoLoad = true;}
-          else if(lastDataResivedIntNoChecksum == 411114){loadcellCallKnownLoad = true;}
-          else{Serial.println(AddChecksum(411117)); lastDataSentNoChecksum = 411117;}
-        }
-        else if(lastDataResivedIntNoChecksum == 111111){
-              
-              if(startTestOk && !testStarted){
-                Serial.println(AddChecksum(111112)); 
-                lastDataSentNoChecksum = 111112; 
-                testStarted = true;
-                maxForce = 0;
-                maxCurrent1 = 0;
-                maxCurrent2 = 0;
-                maxCurrent3 = 0;
-                totalPulse = 0;
-                totalDiffPulse = 0;
-                totalPulseBefore = 0;
-                maxPulse100ms = 0;
-                CalibrateCurrentSensor();
-                relayOpenDoorTime = nowTime + 500;
-                relayDoorSwitchtTime = nowTime + 300;
-                waitTimeForStart = nowTime + 5000;
-                timer100ms = nowTime;
-                digitalWrite(relayOpenDoor, LOW);
-                restetScaleOnec = true;
-                relayDoorSwitchOnce = true;
-                timer100ms = nowTime;
-                times100msControle = nowTime;
-                //timeBetweenRead = nowTime;
-                pulsesBetweenTime = 0;
-
-                loadcellCallFactorNum = readFloatFromEEPROM(loadcellCallFactorResultAdress) / readFloatFromEEPROM(loadcellCallFactorAdress);
-
-                scale.set_scale(loadcellCallFactorNum);
-                                
-                }
-              else{Serial.println(AddChecksum(111113)); lastDataSentNoChecksum = 111113;}
-          
-          }
-
-        else if(lastDataResivedIntNoChecksum == 411111){loadcellCall = true;}
-        else if(lastDataResivedIntNoChecksum > 420000 && lastDataResivedIntNoChecksum < 430000){
-
-          int tempcall = lastDataResivedIntNoChecksum % 10000;
-          loadcellCallFactor = float(tempcall) / 10.0;
-          writeFloatToEEPROM(loadcellCallFactorAdress, loadcellCallFactor);
-          
-          }  
-
-        else if(lastDataResivedIntNoChecksum == 411112){
-          loadcellCallFactorNum = readFloatFromEEPROM(loadcellCallFactorResultAdress) / readFloatFromEEPROM(loadcellCallFactorAdress);
-          scale.set_scale(loadcellCallFactorNum);
-          scale.tare();
-          if(printForceValues){printForceValues = false;}
-          else if(!printForceValues){printForceValues = true;} 
-        }  
-
-        else if(lastDataResivedIntNoChecksum == 411121){
-          if(printCurrentValues){printCurrentValues = false;}
-          else if(!printCurrentValues){CalibrateCurrentSensor(); printCurrentValues = true;}
-        }
-        else if(lastDataResivedIntNoChecksum == 111117){
-          testStarted = false;
-          sendForceOnce = true;
-                sendCurrent1Once = true;
-                sendCurrent2Once = true;
-                sendCurrent3Once = true;
-                sendTotalPulseOnce = true;
-                sendTotalDiffPulseOnce = true;
-                sendMaxSpeedOnce = true;
-                waitTimeDataSend = nowTime;
-                closeToEndOnce = false;
-          }
-      
-    }
-
+  if(Serial.available() > 0){ReadSerialData();}
   //If test is started sensors are messuring. Reading sensors and add to max if its bigger
   if(testStarted){
-    
+      
       if(relayOpenDoorTime < nowTime){digitalWrite(relayOpenDoor, HIGH);}
       if(relayDoorSwitchtTime < nowTime && totalPulse > 20 && relayDoorSwitchOnce){digitalWrite(relayDoorSwitch, HIGH); relayDoorSwitchOnce=false;}
       if(totalPulse > 500 && restetScaleOnec){scale.tare(); restetScaleOnec = false;}
@@ -262,7 +160,7 @@ void loop() {
       if(newCurrent1 > maxCurrent1){maxCurrent1 = newCurrent1;}
       if(newCurrent2 > maxCurrent2){maxCurrent2 = newCurrent2;}
       if(newCurrent3 > maxCurrent3){maxCurrent3 = newCurrent3;}
-      if(timeFor10Pulses < maxPulse100ms){maxPulse100ms = newPulse100ms;}
+      if(timeFor10Pulses < maxPulse100ms && maxPulse100ms < 9999){maxPulse100ms = newPulse100ms;}
 
       if(totalPulseBehind + 3000 < nowTime){totalPulseBehind = nowTime; totalPulsebefore2 = totalPulsebefore1; totalPulsebefore1 = totalPulse;}
       maxPulse100ms = ((int)timeFor10Pulses / 10);
@@ -368,66 +266,4 @@ void loop() {
      }    
     }  
 
-}
-
-
-
-
-
-//input data from string and calculates its checksum 
-int ChecksumCalculator (String dataIn){
-  
-    int receivedNumber = dataIn.substring(0, 6).toInt();
-    
-    int calculatedChecksum = 0;
-    int tempNumber = receivedNumber;
-
-    while(tempNumber > 0){
-
-      calculatedChecksum += tempNumber % 10;
-      tempNumber /= 10;
-     
-      }
-
-    calculatedChecksum %= 10;
-
-    return calculatedChecksum;
-      
-  }
-
-//Adding checksum to the string
-String AddChecksum(int dataToSend) {
-    String dataString = String(dataToSend);
-    int checksum = 0;
-    for (int i = 0; i < dataString.length(); i++) {
-        checksum += dataString.charAt(i) - '0'; 
-    }
-    checksum %= 10; 
-
-    dataString += String(checksum);
-
-    return dataString; 
-}  
-
-//Write to EEPROM
-void writeFloatToEEPROM(int address, float value) {
-  char floatStr[20]; 
-  dtostrf(value, 8, 2, floatStr); 
-  for (int i = 0; i < strlen(floatStr); i++) {EEPROM.write(address + i, floatStr[i]);}
-  EEPROM.write(address + strlen(floatStr), '\0'); // Nollterminera strängen
-  EEPROM.commit();
-}
-
-//Read form EEPROM
-float readFloatFromEEPROM(int address) {
-  char floatStr[20]; 
-  int i = 0;
-  char currentChar = EEPROM.read(address + i);
-  while (currentChar != '\0' && i < 20) {
-    floatStr[i] = currentChar;
-    i++;
-    currentChar = EEPROM.read(address + i);
-  }
-  floatStr[i] = '\0'; 
-  return atof(floatStr);
 }
