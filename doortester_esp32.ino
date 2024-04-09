@@ -14,18 +14,23 @@ int lastChecksumResived;
 int lastDataResivedChecksum;
 
 //Program variables
-bool startTestOk = false;
+bool startTestOk = true;
 bool testStarted = false;
 bool sendForceOnce = false;
 bool sendCurrent1Once = false;
 bool sendCurrent2Once = false;
 bool sendCurrent3Once = false;
 bool restetScaleOnec = false;
+bool relayDoorSwitchOnce = false;
+bool closeToEndOnce = false;
+bool sendTotalPulseOnce = false;
+bool sendTotalDiffPulseOnce = false;
+bool sendMaxSpeedOnce = false;
 
 
 //Force variables and loadcell
-int maxForce = 0;
-int newForce;
+float maxForce = 0;
+float newForce = 0;
 bool loadcellCall = false;
 bool loadcellCallNoLoad = false;
 bool loadcellCallKnownLoad = false;
@@ -48,7 +53,7 @@ int newCurrent3;
 //Speed variables
 int totalPulse = 0;
 int totalDiffPulse = 0;
-int maxPulse100ms = 0;
+unsigned long maxPulse100ms = 0;
 int newPulse100ms = 0;
 int pulseCloseToEnd = 20; //When program shoud look for end of test higher number more accurate
 int tempTotalPulse = 0;
@@ -73,6 +78,13 @@ unsigned long waitTimeDataSend = 0;
 unsigned long printCon = 0;
 unsigned long totalPulseBehind = 0;
 unsigned long timer100ms = 0;
+unsigned long times100msControle = 0;
+
+//Test fos speed in interupt
+unsigned long timeBetweenRead = 0;
+int pulsesBetweenTime = 0;
+unsigned long timeFor10Pulses = 0;
+
 
 //Calibration factor for current sensor 
 int callFactorSernsor1 = 0;
@@ -83,9 +95,17 @@ int callFactorSernsor3 = 0;
 bool printForceValues = false;
 bool printCurrentValues = false;
 
+
 //Hallsensor interupt
 void IRAM_ATTR HallSensor(){
     totalPulse++;
+    pulsesBetweenTime++;
+    if(pulsesBetweenTime == 10){
+      timeFor10Pulses = nowTime - timeBetweenRead;
+      timeBetweenRead = nowTime;
+      pulsesBetweenTime = 0;
+      
+      }
     if(digitalRead(hallpin2) == LOW){totalDiffPulse++;}
     else{totalDiffPulse--;} 
   }
@@ -105,6 +125,7 @@ void setup() {
   scale.begin(LOADCELL_DOUT_PIN, LOADCELL_SCK_PIN);
 
   attachInterrupt(digitalPinToInterrupt(hallpin1), HallSensor, FALLING);
+  startTestOk = true;
   
 }
 
@@ -129,7 +150,7 @@ void loop() {
         }
         else if(lastDataResivedIntNoChecksum == 111111){
               
-              if(startTestOk){
+              if(startTestOk && !testStarted){
                 Serial.println(AddChecksum(111112)); 
                 lastDataSentNoChecksum = 111112; 
                 testStarted = true;
@@ -139,6 +160,7 @@ void loop() {
                 maxCurrent3 = 0;
                 totalPulse = 0;
                 totalDiffPulse = 0;
+                totalPulseBefore = 0;
                 maxPulse100ms = 0;
                 CalibrateCurrentSensor();
                 relayOpenDoorTime = nowTime + 500;
@@ -147,6 +169,11 @@ void loop() {
                 timer100ms = nowTime;
                 digitalWrite(relayOpenDoor, LOW);
                 restetScaleOnec = true;
+                relayDoorSwitchOnce = true;
+                timer100ms = nowTime;
+                times100msControle = nowTime;
+                timeBetweenRead = nowTime;
+                pulsesBetweenTime = 0;
 
                 loadcellCallFactorNum = readFloatFromEEPROM(loadcellCallFactorResultAdress) / readFloatFromEEPROM(loadcellCallFactorAdress);
 
@@ -185,8 +212,10 @@ void loop() {
   if(testStarted){
     
       if(relayOpenDoorTime < nowTime){digitalWrite(relayOpenDoor, HIGH);}
-      if(relayDoorSwitchtTime < nowTime && totalPulse > 20){digitalWrite(relayDoorSwitch, HIGH);}
+      if(relayDoorSwitchtTime < nowTime && totalPulse > 20 && relayDoorSwitchOnce){digitalWrite(relayDoorSwitch, HIGH); relayDoorSwitchOnce=false;}
       if(totalPulse > 500 && restetScaleOnec){scale.tare(); restetScaleOnec = false;}
+      else if(!restetScaleOnec){newForce = abs(10 * scale.get_units());}
+      
       newCurrent1 = ReadCurrentFrom(0, callFactorSernsor1);
       newCurrent2 = ReadCurrentFrom(1, callFactorSernsor2);
       newCurrent3 = ReadCurrentFrom(2, callFactorSernsor3);
@@ -195,29 +224,35 @@ void loop() {
       if(newCurrent1 > maxCurrent1){maxCurrent1 = newCurrent1;}
       if(newCurrent2 > maxCurrent2){maxCurrent2 = newCurrent2;}
       if(newCurrent3 > maxCurrent3){maxCurrent3 = newCurrent3;}
-      if(newPulse100ms > maxPulse100ms){maxPulse100ms = newPulse100ms;}
+      if(timeFor10Pulses < maxPulse100ms){maxPulse100ms = newPulse100ms;}
 
-
-      //Se över HUR DETTA FUNGEAR MED STOPPA TEST SE KONSTIGT UT!!!!!!!
       if(totalPulseBehind + 3000 < nowTime){totalPulseBehind = nowTime; totalPulsebefore2 = totalPulsebefore1; totalPulsebefore1 = totalPulse;}
+      maxPulse100ms = (int)timeFor10Pulses;
+      /*if(timer100ms + 100 < nowTime){
 
-      if(timer100ms + 100 < nowTime){
-
-        newPulse100ms = totalPulse - totalPulseBefore;
+        unsigned long tempTime = nowTime - times100msControle;
+        newPulse100ms = (totalPulse - totalPulseBefore);
+        float tempPulses = newPulse100ms / tempTime;
+        newPulse100ms = tempPulses * 100;
+        Serial.println(totalPulse);
+        Serial.println(totalPulseBefore);
+        Serial.println(newPulse100ms);
+        Serial.println("");
+        
         totalPulseBefore = totalPulse;
         timer100ms = nowTime;
-        
-        }
+        times100msControle = nowTime;
+        }*/
 
   }
 
   //Stops test
   if(testStarted && (waitTimeForStart < nowTime)){
-    
+        
         tempTotalPulse = totalPulse / pulseCloseToEnd;
-        if(tempTotalPulse > totalDiffPulse){
-          digitalWrite(relayDoorSwitch, LOW);
-        if (totalPulse > (totalPulsebefore2 - 3) && totalPulse < (totalPulsebefore2 + 3)){
+        if(tempTotalPulse > abs(totalDiffPulse)){closeToEndOnce = true; digitalWrite(relayDoorSwitch, LOW);}
+          
+        if (totalPulse > (totalPulsebefore2 - 1) && totalPulse < (totalPulsebefore2 + 1) && closeToEndOnce){
 
             //Calling test is over          
             if(waitTimeWhenTestIsDone < nowTime){
@@ -230,33 +265,42 @@ void loop() {
                 sendCurrent1Once = true;
                 sendCurrent2Once = true;
                 sendCurrent3Once = true;
+                sendTotalPulseOnce = true;
+                sendTotalDiffPulseOnce = true;
+                sendMaxSpeedOnce = true;
                 waitTimeDataSend = nowTime;
+                closeToEndOnce = false;
                 
               }
           
           }
           else{waitTimeWhenTestIsDone = nowTime + 2000;}
-        }
+        
     
     }
 
   //Send data
   if(!testStarted){
-
-      if(waitTimeDataSend + 200 < nowTime && sendForceOnce){Serial.println(AddChecksum(maxForce)); lastDataSentNoChecksum = maxForce; sendForceOnce = false;}
-      if(waitTimeDataSend + 400 < nowTime && sendCurrent1Once){Serial.println(AddChecksum(maxCurrent1)); lastDataSentNoChecksum = maxCurrent1; sendCurrent1Once = false;}
-      if(waitTimeDataSend + 600 < nowTime && sendCurrent2Once){Serial.println(AddChecksum(maxCurrent2)); lastDataSentNoChecksum = maxCurrent2; sendCurrent2Once = false;}
-      if(waitTimeDataSend + 800 < nowTime && sendCurrent3Once){Serial.println(AddChecksum(maxCurrent3)); lastDataSentNoChecksum = maxCurrent3; sendCurrent3Once = false;}
-      //if(waitTimeDataSend + 1000 < nowTime){Serial.println(AddChecksum(maxForce)); lastDataSentNoChecksum = maxForce;}
+      int maxForceInt = maxForce;
+      if(waitTimeDataSend + 200 < nowTime && sendForceOnce){Serial.println(AddChecksum((120000 + maxForceInt))); lastDataSentNoChecksum = (120000 + maxForce); sendForceOnce = false;}
+      if(waitTimeDataSend + 400 < nowTime && sendCurrent1Once){Serial.println(AddChecksum((130000 + maxCurrent1))); lastDataSentNoChecksum = (130000 + maxCurrent1); sendCurrent1Once = false;}
+      if(waitTimeDataSend + 600 < nowTime && sendCurrent2Once){Serial.println(AddChecksum((140000 + maxCurrent2))); lastDataSentNoChecksum = (140000 + maxCurrent2); sendCurrent2Once = false;}
+      if(waitTimeDataSend + 800 < nowTime && sendCurrent3Once){Serial.println(AddChecksum((150000 + maxCurrent3))); lastDataSentNoChecksum = (150000 + maxCurrent3); sendCurrent3Once = false;}
+      if(waitTimeDataSend + 1000 < nowTime && sendTotalPulseOnce){Serial.println(AddChecksum((160000 + totalPulse))); lastDataSentNoChecksum = (160000 + totalPulse); sendTotalPulseOnce = false;}
+      if(waitTimeDataSend + 1200 < nowTime && sendTotalDiffPulseOnce){Serial.println(AddChecksum((175000 + totalDiffPulse))); lastDataSentNoChecksum = (175000 + totalDiffPulse); sendTotalDiffPulseOnce = false;}
+      if(waitTimeDataSend + 1400 < nowTime && sendMaxSpeedOnce){Serial.println(AddChecksum((180000 + maxPulse100ms))); lastDataSentNoChecksum = (180000 + maxPulse100ms); sendMaxSpeedOnce = false;}
     
     }  
   
   if(printForceValues || printCurrentValues){
     
     if(printCon < nowTime){
-        if(printForceValues){Serial.println(scale.get_units(), 1);}
-        if(printCurrentValues){Serial.println(ReadCurrentFrom(0, callFactorSernsor1));}
-        printCon = nowTime + 500; 
+        float temptemp = abs(10 * scale.get_units(5));
+        int convertForce = 120000 + ((int)temptemp);
+        if(printForceValues){Serial.println(AddChecksum(convertForce));}
+        if(printCurrentValues){Serial.println(AddChecksum((130000 + ReadCurrentFrom(0, callFactorSernsor1))));Serial.println(AddChecksum((140000 + ReadCurrentFrom(1, callFactorSernsor2))));
+        Serial.println(AddChecksum((150000 + ReadCurrentFrom(2, callFactorSernsor3))));}
+        printCon = nowTime + 2500; 
       }
     }  
 
@@ -277,15 +321,13 @@ void loop() {
             delay(1000);
             long reading = scale.get_units(10);
             writeFloatToEEPROM(loadcellCallFactorResultAdress, reading);
+            delay(1000);
             Serial.println(AddChecksum(411116));
             lastDataSentNoChecksum = 411116;
             loadcellCallKnownLoad = false;
             loadcellCall = false;
             }  
-     } 
-    
-    delay(1000);
-    
+     }    
     }  
 
 }
