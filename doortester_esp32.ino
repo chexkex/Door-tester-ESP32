@@ -81,9 +81,13 @@ unsigned long timer100ms = 0;
 unsigned long times100msControle = 0;
 
 //Test fos speed in interupt
-unsigned long timeBetweenRead = 0;
+/*unsigned long timeBetweenRead = 0;
 int pulsesBetweenTime = 0;
-unsigned long timeFor10Pulses = 0;
+unsigned long timeFor10Pulses = 0;*/
+
+volatile unsigned long timeOfLastPulse = 0;
+volatile unsigned long timeFor10Pulses = 0;
+volatile int pulsesBetweenTime = 0;
 
 
 //Calibration factor for current sensor 
@@ -95,7 +99,7 @@ int callFactorSernsor3 = 0;
 bool printForceValues = false;
 bool printCurrentValues = false;
 
-
+/*
 //Hallsensor interupt
 void IRAM_ATTR HallSensor(){
     totalPulse++;
@@ -108,7 +112,29 @@ void IRAM_ATTR HallSensor(){
       }
     if(digitalRead(hallpin2) == LOW){totalDiffPulse++;}
     else{totalDiffPulse--;} 
+  }*/
+
+void IRAM_ATTR HallSensor() {
+  totalPulse++;
+  pulsesBetweenTime++;
+  
+  unsigned long nowTimeMicros = micros();
+  
+  if (pulsesBetweenTime == 10) {
+    if (timeOfLastPulse != 0) {
+      timeFor10Pulses = nowTimeMicros - timeOfLastPulse;
+      
+    }
+    timeOfLastPulse = nowTimeMicros;
+    pulsesBetweenTime = 0;
   }
+  
+  if (digitalRead(hallpin2) == LOW) {
+    totalDiffPulse++;
+  } else {
+    totalDiffPulse--;
+  }
+}  
 
 
 void setup() {
@@ -172,7 +198,7 @@ void loop() {
                 relayDoorSwitchOnce = true;
                 timer100ms = nowTime;
                 times100msControle = nowTime;
-                timeBetweenRead = nowTime;
+                //timeBetweenRead = nowTime;
                 pulsesBetweenTime = 0;
 
                 loadcellCallFactorNum = readFloatFromEEPROM(loadcellCallFactorResultAdress) / readFloatFromEEPROM(loadcellCallFactorAdress);
@@ -205,6 +231,18 @@ void loop() {
           if(printCurrentValues){printCurrentValues = false;}
           else if(!printCurrentValues){CalibrateCurrentSensor(); printCurrentValues = true;}
         }
+        else if(lastDataResivedIntNoChecksum == 111117){
+          testStarted = false;
+          sendForceOnce = true;
+                sendCurrent1Once = true;
+                sendCurrent2Once = true;
+                sendCurrent3Once = true;
+                sendTotalPulseOnce = true;
+                sendTotalDiffPulseOnce = true;
+                sendMaxSpeedOnce = true;
+                waitTimeDataSend = nowTime;
+                closeToEndOnce = false;
+          }
       
     }
 
@@ -227,7 +265,7 @@ void loop() {
       if(timeFor10Pulses < maxPulse100ms){maxPulse100ms = newPulse100ms;}
 
       if(totalPulseBehind + 3000 < nowTime){totalPulseBehind = nowTime; totalPulsebefore2 = totalPulsebefore1; totalPulsebefore1 = totalPulse;}
-      maxPulse100ms = (int)timeFor10Pulses;
+      maxPulse100ms = ((int)timeFor10Pulses / 10);
       /*if(timer100ms + 100 < nowTime){
 
         unsigned long tempTime = nowTime - times100msControle;
@@ -332,23 +370,9 @@ void loop() {
 
 }
 
-//Callibration current sensors
-void CalibrateCurrentSensor(){
-  
-    callFactorSernsor1 = ADS.readADC(0);
-    callFactorSernsor2 = ADS.readADC(1);
-    callFactorSernsor3 = ADS.readADC(2);
-  
-  }
 
-//Reading currentsensors and converting to mA
-int ReadCurrentFrom(int sensor, int calibrationFactor)
-{
-    ADS.setGain(0);
-    int dataFromSensorX = ADS.readADC(sensor);
-    int outData = (abs(dataFromSensorX - calibrationFactor)) / 2.55555;
-    return outData;
-}  
+
+
 
 //input data from string and calculates its checksum 
 int ChecksumCalculator (String dataIn){
