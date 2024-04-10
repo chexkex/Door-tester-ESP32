@@ -18,7 +18,7 @@
               if(startTestOk && !testStarted){
                 Serial.println(AddChecksum(111112)); 
                 lastDataSentNoChecksum = 111112; 
-                testStarted = true;
+                
                 maxForce = 0;
                 maxCurrent1 = 0;
                 maxCurrent2 = 0;
@@ -31,18 +31,18 @@
                 relayOpenDoorTime = nowTime + 500;
                 relayDoorSwitchtTime = nowTime + 300;
                 waitTimeForStart = nowTime + 5000;
-                timer100ms = nowTime;
-                digitalWrite(relayOpenDoor, LOW);
+                             
                 restetScaleOnec = true;
                 relayDoorSwitchOnce = true;
-                timer100ms = nowTime;
-                times100msControle = nowTime;
-                //timeBetweenRead = nowTime;
+               
                 pulsesBetweenTime = 0;
 
                 loadcellCallFactorNum = readFloatFromEEPROM(loadcellCallFactorResultAdress) / readFloatFromEEPROM(loadcellCallFactorAdress);
 
                 scale.set_scale(loadcellCallFactorNum);
+                delay(100);
+                testStarted = true;
+                digitalWrite(relayOpenDoor, LOW);
                                 
                 }
               else{Serial.println(AddChecksum(111113)); lastDataSentNoChecksum = 111113;}

@@ -61,7 +61,6 @@ int totalPulse = 0;
 int totalPulseOver = 0;
 int totalDiffPulse = 0;
 int maxPulse100ms = 10000;
-int newPulse100ms = 0;
 int pulseCloseToEnd = 20; //When program shoud look for end of test higher number more accurate
 int tempTotalPulse = 0;
 int totalPulsebefore1 = 0;
@@ -85,15 +84,7 @@ unsigned long waitTimeWhenTestIsDone = 0;
 unsigned long waitTimeDataSend = 0;
 unsigned long printCon = 0;
 unsigned long totalPulseBehind = 0;
-unsigned long timer100ms = 0;
-unsigned long times100msControle = 0;
-unsigned long timeReadLoadcell = 0;
-
 //Test fos speed in interupt
-/*unsigned long timeBetweenRead = 0;
-int pulsesBetweenTime = 0;
-unsigned long timeFor10Pulses = 0;*/
-
 volatile unsigned long timeOfLastPulse = 0;
 volatile unsigned long timeFor10Pulses = 0;
 volatile int pulsesBetweenTime = 0;
@@ -149,13 +140,13 @@ void setup() {
 
   //Starting its second core
    xTaskCreatePinnedToCore(
-    secondTask,   // Funktionen för den andra uppgiften
-    "SecondTask", // Namn på uppgiften
-    10000,        // Stackstorlek för uppgiften (i byte)
-    NULL,         // Inga parametrar för funktionen
-    1,            // Prioritet för uppgiften (1 är normalt)
-    NULL,         // Inget handtag till uppgiften
-    0             // Vilken kärna att köra uppgiften på (0 eller 1)
+    secondTask,   
+    "SecondTask", 
+    10000,        
+    NULL,         
+    1,            
+    NULL,         
+    0             
   );
   
 }
@@ -179,22 +170,6 @@ void loop() {
       if(totalPulseBehind + 3000 < nowTime){totalPulseBehind = nowTime; totalPulsebefore2 = totalPulsebefore1; totalPulsebefore1 = totalPulse;}
       timeFor10PulsesInt = ((int)timeFor10Pulses / 10);
       
-      /*if(timer100ms + 100 < nowTime){
-
-        unsigned long tempTime = nowTime - times100msControle;
-        newPulse100ms = (totalPulse - totalPulseBefore);
-        float tempPulses = newPulse100ms / tempTime;
-        newPulse100ms = tempPulses * 100;
-        Serial.println(totalPulse);
-        Serial.println(totalPulseBefore);
-        Serial.println(newPulse100ms);
-        Serial.println("");
-        
-        totalPulseBefore = totalPulse;
-        timer100ms = nowTime;
-        times100msControle = nowTime;
-        }*/
-
   }
 
   //Stops test
