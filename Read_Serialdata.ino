@@ -13,7 +13,7 @@
           else if(lastDataResivedIntNoChecksum == 411114){loadcellCallKnownLoad = true;}
           else{Serial.println(AddChecksum(411117)); lastDataSentNoChecksum = 411117;}
         }
-        else if(lastDataResivedIntNoChecksum == 111111){
+        else if(lastDataResivedIntNoChecksum == 111111 && !printCurrentValues && !printForceValues){
               
               if(startTestOk && !testStarted){
                 Serial.println(AddChecksum(111112)); 

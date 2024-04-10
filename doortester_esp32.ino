@@ -170,11 +170,6 @@ void loop() {
       if(relayOpenDoorTime < nowTime){digitalWrite(relayOpenDoor, HIGH);}
       if(relayDoorSwitchtTime < nowTime && totalPulse > 20 && relayDoorSwitchOnce){digitalWrite(relayDoorSwitch, HIGH); relayDoorSwitchOnce=false;}
       
-      
-      newCurrent1 = ReadCurrentFrom(0, callFactorSernsor1);
-      newCurrent2 = ReadCurrentFrom(1, callFactorSernsor2);
-      newCurrent3 = ReadCurrentFrom(2, callFactorSernsor3);
-    
       if(newForce > maxForce && !restetScaleOnec){maxForce = newForce;}
       if(newCurrent1 > maxCurrent1){maxCurrent1 = newCurrent1;}
       if(newCurrent2 > maxCurrent2){maxCurrent2 = newCurrent2;}
@@ -243,7 +238,7 @@ void loop() {
       if(totalPulse > 9999 && totalPulse < 100000){PulseOver10000(totalPulse); checkTotalPulseOverOnce = false;}
       digitalWrite(relayDoorSwitch, LOW);
       int maxForceInt = maxForce;
-      if(waitTimeDataSend + 200 < nowTime && sendForceOnce){Serial.println(AddChecksum((120000 + maxForceInt))); lastDataSentNoChecksum = (120000 + maxForce); sendForceOnce = false;}
+      if(waitTimeDataSend + 200 < nowTime && sendForceOnce && maxForceInt < 9999){Serial.println(AddChecksum((120000 + maxForceInt))); lastDataSentNoChecksum = (120000 + maxForce); sendForceOnce = false;}
       if(waitTimeDataSend + 400 < nowTime && sendCurrent1Once){Serial.println(AddChecksum((130000 + maxCurrent1))); lastDataSentNoChecksum = (130000 + maxCurrent1); sendCurrent1Once = false;}
       if(waitTimeDataSend + 600 < nowTime && sendCurrent2Once){Serial.println(AddChecksum((140000 + maxCurrent2))); lastDataSentNoChecksum = (140000 + maxCurrent2); sendCurrent2Once = false;}
       if(waitTimeDataSend + 800 < nowTime && sendCurrent3Once){Serial.println(AddChecksum((150000 + maxCurrent3))); lastDataSentNoChecksum = (150000 + maxCurrent3); sendCurrent3Once = false;}
@@ -263,7 +258,7 @@ void loop() {
         if(printForceValues){Serial.println(AddChecksum(convertForce));}
         if(printCurrentValues){Serial.println(AddChecksum((130000 + ReadCurrentFrom(0, callFactorSernsor1))));Serial.println(AddChecksum((140000 + ReadCurrentFrom(1, callFactorSernsor2))));
         Serial.println(AddChecksum((150000 + ReadCurrentFrom(2, callFactorSernsor3))));}
-        printCon = nowTime + 2500; 
+        printCon = nowTime + 500; 
       }
     }  
 
