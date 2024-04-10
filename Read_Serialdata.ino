@@ -81,6 +81,9 @@
                 sendMaxSpeedOnce = true;
                 waitTimeDataSend = nowTime;
                 closeToEndOnce = false;
+                sendEndOnce = true;
+                sendTotalPulseOverOnce = true;
+                checkTotalPulseOverOnce = true;
           }
       
     }

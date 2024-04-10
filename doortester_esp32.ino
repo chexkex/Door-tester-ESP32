@@ -29,6 +29,9 @@ bool closeToEndOnce = false;
 bool sendTotalPulseOnce = false;
 bool sendTotalDiffPulseOnce = false;
 bool sendMaxSpeedOnce = false;
+bool sendEndOnce = false;
+bool sendTotalPulseOverOnce = false;
+bool checkTotalPulseOverOnce = false;
 
 
 //Force variables and loadcell
@@ -55,6 +58,7 @@ int newCurrent3;
 
 //Speed variables
 int totalPulse = 0;
+int totalPulseOver = 0;
 int totalDiffPulse = 0;
 int maxPulse100ms = 10000;
 int newPulse100ms = 0;
@@ -179,7 +183,7 @@ void loop() {
       
       if(totalPulseBehind + 3000 < nowTime){totalPulseBehind = nowTime; totalPulsebefore2 = totalPulsebefore1; totalPulsebefore1 = totalPulse;}
       timeFor10PulsesInt = ((int)timeFor10Pulses / 10);
-      Serial.println(totalPulse);
+      
       /*if(timer100ms + 100 < nowTime){
 
         unsigned long tempTime = nowTime - times100msControle;
@@ -220,8 +224,11 @@ void loop() {
                 sendTotalPulseOnce = true;
                 sendTotalDiffPulseOnce = true;
                 sendMaxSpeedOnce = true;
+                sendEndOnce = true;
                 waitTimeDataSend = nowTime;
                 closeToEndOnce = false;
+                sendTotalPulseOverOnce = true;
+                checkTotalPulseOverOnce = true;
                 
               }
           
@@ -233,15 +240,18 @@ void loop() {
 
   //Send data
   if(!testStarted){
+      if(totalPulse > 9999 && totalPulse < 100000){PulseOver10000(totalPulse); checkTotalPulseOverOnce = false;}
       digitalWrite(relayDoorSwitch, LOW);
       int maxForceInt = maxForce;
       if(waitTimeDataSend + 200 < nowTime && sendForceOnce){Serial.println(AddChecksum((120000 + maxForceInt))); lastDataSentNoChecksum = (120000 + maxForce); sendForceOnce = false;}
       if(waitTimeDataSend + 400 < nowTime && sendCurrent1Once){Serial.println(AddChecksum((130000 + maxCurrent1))); lastDataSentNoChecksum = (130000 + maxCurrent1); sendCurrent1Once = false;}
       if(waitTimeDataSend + 600 < nowTime && sendCurrent2Once){Serial.println(AddChecksum((140000 + maxCurrent2))); lastDataSentNoChecksum = (140000 + maxCurrent2); sendCurrent2Once = false;}
       if(waitTimeDataSend + 800 < nowTime && sendCurrent3Once){Serial.println(AddChecksum((150000 + maxCurrent3))); lastDataSentNoChecksum = (150000 + maxCurrent3); sendCurrent3Once = false;}
-      if(waitTimeDataSend + 1000 < nowTime && sendTotalPulseOnce){Serial.println(AddChecksum((160000 + totalPulse))); lastDataSentNoChecksum = (160000 + totalPulse); sendTotalPulseOnce = false;}
+      if(waitTimeDataSend + 1000 < nowTime && sendTotalPulseOnce && totalPulse < 100000){Serial.println(AddChecksum((160000 + totalPulse))); lastDataSentNoChecksum = (160000 + totalPulse); sendTotalPulseOnce = false;}
       if(waitTimeDataSend + 1200 < nowTime && sendTotalDiffPulseOnce){Serial.println(AddChecksum((175000 + totalDiffPulse))); lastDataSentNoChecksum = (175000 + totalDiffPulse); sendTotalDiffPulseOnce = false;}
       if(waitTimeDataSend + 1400 < nowTime && sendMaxSpeedOnce){Serial.println(AddChecksum((180000 + maxPulse100ms))); lastDataSentNoChecksum = (180000 + maxPulse100ms); sendMaxSpeedOnce = false;}
+      if(waitTimeDataSend + 1600 < nowTime && sendTotalPulseOverOnce && !checkTotalPulseOverOnce){Serial.println(AddChecksum((210000 + totalPulseOver))); lastDataSentNoChecksum = (210000 + totalPulseOver); sendTotalPulseOverOnce = false;}
+      if(waitTimeDataSend + 1800 < nowTime && sendEndOnce){Serial.println(AddChecksum(111116)); lastDataSentNoChecksum = 111116; sendEndOnce = false;}
     
     }  
   
