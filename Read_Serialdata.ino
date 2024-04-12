@@ -9,10 +9,13 @@
          
         else if(lastDataResivedIntNoChecksum == 111122){Serial.println(AddChecksum(lastDataSentNoChecksum.toInt()));}
         else if(loadcellCall){
-          if(lastDataResivedIntNoChecksum == 411113){loadcellCallNoLoad = true;}
+          if(lastDataResivedIntNoChecksum == 411111){loadcellCall = false;}
+          else if(lastDataResivedIntNoChecksum == 411113){loadcellCallNoLoad = true;}
           else if(lastDataResivedIntNoChecksum == 411114){loadcellCallKnownLoad = true;}
           else{Serial.println(AddChecksum(411117)); lastDataSentNoChecksum = 411117;}
         }
+        else if(lastDataResivedIntNoChecksum == 411131 && !doorCalibration){doorCalibration = true; totalPulse = 0;}
+        else if(lastDataResivedIntNoChecksum == 411132 && doorCalibration){doorCalibration = false; doorCalibrationOnce = true; checkTotalPulseOverOnce = true;}
         else if(lastDataResivedIntNoChecksum == 111111 && !printCurrentValues && !printForceValues){
               
               if(startTestOk && !testStarted){
@@ -49,7 +52,7 @@
           
           }
 
-        else if(lastDataResivedIntNoChecksum == 411111){loadcellCall = true;}
+        else if(lastDataResivedIntNoChecksum == 411111){loadcellCall = !loadcellCall;}
         else if(lastDataResivedIntNoChecksum > 420000 && lastDataResivedIntNoChecksum < 430000){
 
           int tempcall = lastDataResivedIntNoChecksum % 10000;

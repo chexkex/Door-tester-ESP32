@@ -32,6 +32,8 @@ bool sendMaxSpeedOnce = false;
 bool sendEndOnce = false;
 bool sendTotalPulseOverOnce = false;
 bool checkTotalPulseOverOnce = false;
+bool doorCalibration = false;
+bool doorCalibrationOnce = false;
 
 
 //Force variables and loadcell
@@ -70,7 +72,6 @@ int hallpin2 = 15; //Hallpin 2
 int totalPulseBefore = 0;
 int timeFor10PulsesInt = 0;
 
-
 //Relay outputs
 int relayOpenDoor = 26;
 int relayDoorSwitch = 25;
@@ -84,11 +85,11 @@ unsigned long waitTimeWhenTestIsDone = 0;
 unsigned long waitTimeDataSend = 0;
 unsigned long printCon = 0;
 unsigned long totalPulseBehind = 0;
-//Test fos speed in interupt
+
+//For speed and pulse in interupt
 volatile unsigned long timeOfLastPulse = 0;
 volatile unsigned long timeFor10Pulses = 0;
 volatile int pulsesBetweenTime = 0;
-
 
 //Calibration factor for current sensor 
 int callFactorSernsor1 = 0;
@@ -99,26 +100,18 @@ int callFactorSernsor3 = 0;
 bool printForceValues = false;
 bool printCurrentValues = false;
 
+//Speed and pulse interupt
 void IRAM_ATTR HallSensor() {
-  totalPulse++;
-  pulsesBetweenTime++;
-  
+  if(testStarted || doorCalibration){totalPulse++; pulsesBetweenTime++;}
   unsigned long nowTimeMicros = micros();
   
   if (pulsesBetweenTime == 10) {
-    if (timeOfLastPulse != 0) {
-      timeFor10Pulses = nowTimeMicros - timeOfLastPulse;
-      
-    }
+    if (timeOfLastPulse != 0) { timeFor10Pulses = nowTimeMicros - timeOfLastPulse;}
     timeOfLastPulse = nowTimeMicros;
     pulsesBetweenTime = 0;
   }
-  
-  if (digitalRead(hallpin2) == LOW) {
-    totalDiffPulse++;
-  } else {
-    totalDiffPulse--;
-  }
+  if (digitalRead(hallpin2) == LOW) {totalDiffPulse++;}
+  else {totalDiffPulse--;}
 }  
 
 
@@ -169,7 +162,7 @@ void loop() {
       
       if(totalPulseBehind + 3000 < nowTime){totalPulseBehind = nowTime; totalPulsebefore2 = totalPulsebefore1; totalPulsebefore1 = totalPulse;}
       timeFor10PulsesInt = ((int)timeFor10Pulses / 10);
-      
+            
   }
 
   //Stops test
@@ -209,8 +202,8 @@ void loop() {
     }
 
   //Send data
-  if(!testStarted){
-      if(totalPulse > 9999 && totalPulse < 100000){PulseOver10000(totalPulse); checkTotalPulseOverOnce = false;}
+  if(!testStarted && !doorCalibrationOnce){
+      if(totalPulse > 9999 && totalPulse < 100000 && checkTotalPulseOverOnce){PulseOver10000(totalPulse); checkTotalPulseOverOnce = false;}
       digitalWrite(relayDoorSwitch, LOW);
       int maxForceInt = maxForce;
       if(waitTimeDataSend + 200 < nowTime && sendForceOnce && maxForceInt < 9999){Serial.println(AddChecksum((120000 + maxForceInt))); lastDataSentNoChecksum = (120000 + maxForce); sendForceOnce = false;}
@@ -218,7 +211,7 @@ void loop() {
       if(waitTimeDataSend + 600 < nowTime && sendCurrent2Once){Serial.println(AddChecksum((140000 + maxCurrent2))); lastDataSentNoChecksum = (140000 + maxCurrent2); sendCurrent2Once = false;}
       if(waitTimeDataSend + 800 < nowTime && sendCurrent3Once){Serial.println(AddChecksum((150000 + maxCurrent3))); lastDataSentNoChecksum = (150000 + maxCurrent3); sendCurrent3Once = false;}
       if(waitTimeDataSend + 1000 < nowTime && sendTotalPulseOnce && totalPulse < 100000){Serial.println(AddChecksum((160000 + totalPulse))); lastDataSentNoChecksum = (160000 + totalPulse); sendTotalPulseOnce = false;}
-      if(waitTimeDataSend + 1200 < nowTime && sendTotalDiffPulseOnce){Serial.println(AddChecksum((175000 + totalDiffPulse))); lastDataSentNoChecksum = (175000 + totalDiffPulse); sendTotalDiffPulseOnce = false;}
+      if(waitTimeDataSend + 1200 < nowTime && sendTotalDiffPulseOnce && totalDiffPulse < 5000 && totalDiffPulse > -5000){Serial.println(AddChecksum((175000 + totalDiffPulse))); lastDataSentNoChecksum = (175000 + totalDiffPulse); sendTotalDiffPulseOnce = false;}
       if(waitTimeDataSend + 1400 < nowTime && sendMaxSpeedOnce){Serial.println(AddChecksum((180000 + maxPulse100ms))); lastDataSentNoChecksum = (180000 + maxPulse100ms); sendMaxSpeedOnce = false;}
       if(waitTimeDataSend + 1600 < nowTime && sendTotalPulseOverOnce && !checkTotalPulseOverOnce){Serial.println(AddChecksum((210000 + totalPulseOver))); lastDataSentNoChecksum = (210000 + totalPulseOver); sendTotalPulseOverOnce = false;}
       if(waitTimeDataSend + 1800 < nowTime && sendEndOnce){Serial.println(AddChecksum(111116)); lastDataSentNoChecksum = 111116; sendEndOnce = false;}
@@ -237,9 +230,11 @@ void loop() {
       }
     }  
 
+  //Calibrate load cell
   if(loadcellCall){
-    
+
     if (scale.is_ready()) {
+        //Calibrate no load
         if(loadcellCallNoLoad){
           delay(1000);
           scale.set_scale();
@@ -249,6 +244,7 @@ void loop() {
           lastDataSentNoChecksum = 411115;
           loadcellCallNoLoad = false;
           }
+          //Calibrate known load
           else if(loadcellCallKnownLoad){
 
             delay(1000);
@@ -261,6 +257,30 @@ void loop() {
             loadcellCall = false;
             }  
      }    
+    } 
+
+   if(!doorCalibration && doorCalibrationOnce){
+    
+    if(totalPulseBehind + 3000 < nowTime){totalPulseBehind = nowTime; totalPulsebefore2 = totalPulsebefore1; totalPulsebefore1 = totalPulse;}
+
+    if (totalPulse > (totalPulsebefore2 - 1) && totalPulse < (totalPulsebefore2 + 1)){
+       doorCalibrationOnce = false;
+       
+      if(totalPulse > 9999 && totalPulse < 100000){
+        
+        PulseOver10000(totalPulse); 
+        checkTotalPulseOverOnce = false;
+        Serial.println(AddChecksum(160000 + totalPulse));
+        delay(100);
+        Serial.println(AddChecksum(210000 + totalPulseOver));
+        }
+        else{Serial.println(AddChecksum(160000 + totalPulse));}
+        delay(100);
+        Serial.println(AddChecksum(111116));
+                   
+          
+      }
+      
     }  
 
 }
