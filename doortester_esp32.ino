@@ -34,6 +34,7 @@ bool sendTotalPulseOverOnce = false;
 bool checkTotalPulseOverOnce = false;
 bool doorCalibration = false;
 bool doorCalibrationOnce = false;
+bool doorCalRelayOnce = false;
 
 
 //Force variables and loadcell
@@ -63,7 +64,7 @@ int totalPulse = 0;
 int totalPulseOver = 0;
 int totalDiffPulse = 0;
 int maxPulse100ms = 10000;
-int pulseCloseToEnd = 20; //When program shoud look for end of test higher number more accurate
+int pulseCloseToEnd = 40; //When program shoud look for end of test higher number more accurate
 int tempTotalPulse = 0;
 int totalPulsebefore1 = 0;
 int totalPulsebefore2 = 0;
@@ -152,7 +153,7 @@ void loop() {
   if(testStarted){
       
       if(relayOpenDoorTime < nowTime){digitalWrite(relayOpenDoor, HIGH);}
-      if(relayDoorSwitchtTime < nowTime && totalPulse > 20 && relayDoorSwitchOnce){digitalWrite(relayDoorSwitch, HIGH); relayDoorSwitchOnce=false;}
+      if(relayDoorSwitchtTime < nowTime && totalPulse > 30 && relayDoorSwitchOnce){digitalWrite(relayDoorSwitch, HIGH); relayDoorSwitchOnce=false;}
       
       if(newForce > maxForce && !restetScaleOnec){maxForce = newForce;}
       if(newCurrent1 > maxCurrent1){maxCurrent1 = newCurrent1;}
@@ -171,7 +172,7 @@ void loop() {
         tempTotalPulse = totalPulse / pulseCloseToEnd;
         if(tempTotalPulse > abs(totalDiffPulse)){closeToEndOnce = true; digitalWrite(relayDoorSwitch, LOW);}
           
-        if (totalPulse > (totalPulsebefore2 - 1) && totalPulse < (totalPulsebefore2 + 1) && closeToEndOnce){
+        if (totalPulse == totalPulsebefore2 && closeToEndOnce && newCurrent1 < 300){
 
             //Calling test is over          
             if(waitTimeWhenTestIsDone < nowTime){
@@ -202,7 +203,7 @@ void loop() {
     }
 
   //Send data
-  if(!testStarted && !doorCalibrationOnce){
+  if(!testStarted && !doorCalibrationOnce && !doorCalibration){
       if(totalPulse > 9999 && totalPulse < 100000 && checkTotalPulseOverOnce){PulseOver10000(totalPulse); checkTotalPulseOverOnce = false;}
       digitalWrite(relayDoorSwitch, LOW);
       int maxForceInt = maxForce;
@@ -259,11 +260,19 @@ void loop() {
      }    
     } 
 
+    if(doorCalibration){
+      tempTotalPulse = totalPulse / pulseCloseToEnd;
+      if(relayOpenDoorTime < nowTime){digitalWrite(relayOpenDoor, HIGH);}
+      if(totalPulse > 200 && tempTotalPulse > abs(totalDiffPulse)){digitalWrite(relayDoorSwitch, LOW);}
+      else if(totalPulse > 30 && doorCalRelayOnce){digitalWrite(relayDoorSwitch, HIGH); doorCalRelayOnce == false;}
+      
+      }
+  
    if(!doorCalibration && doorCalibrationOnce){
     
-    if(totalPulseBehind + 3000 < nowTime){totalPulseBehind = nowTime; totalPulsebefore2 = totalPulsebefore1; totalPulsebefore1 = totalPulse;}
+    if(totalPulseBehind + 5000 < nowTime){totalPulseBehind = nowTime; totalPulsebefore2 = totalPulsebefore1; totalPulsebefore1 = totalPulse;}
 
-    if (totalPulse > (totalPulsebefore2 - 1) && totalPulse < (totalPulsebefore2 + 1)){
+    if (totalPulse == totalPulsebefore2){
        doorCalibrationOnce = false;
        
       if(totalPulse > 9999 && totalPulse < 100000){

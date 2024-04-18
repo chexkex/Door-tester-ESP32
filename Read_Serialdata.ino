@@ -14,7 +14,12 @@
           else if(lastDataResivedIntNoChecksum == 411114){loadcellCallKnownLoad = true;}
           else{Serial.println(AddChecksum(411117)); lastDataSentNoChecksum = 411117;}
         }
-        else if(lastDataResivedIntNoChecksum == 411131 && !doorCalibration){doorCalibration = true; totalPulse = 0;}
+        else if(lastDataResivedIntNoChecksum == 411131 && !doorCalibration){doorCalibration = true; 
+          totalPulse = 0; 
+          totalDiffPulse = 0; 
+          doorCalRelayOnce = true;
+          relayOpenDoorTime = nowTime + 500;
+        digitalWrite(relayOpenDoor, LOW);}
         else if(lastDataResivedIntNoChecksum == 411132 && doorCalibration){doorCalibration = false; doorCalibrationOnce = true; checkTotalPulseOverOnce = true;}
         else if(lastDataResivedIntNoChecksum == 111111 && !printCurrentValues && !printForceValues){
               
