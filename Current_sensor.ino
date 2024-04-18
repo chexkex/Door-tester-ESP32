@@ -12,6 +12,6 @@ int ReadCurrentFrom(int sensor, int calibrationFactor)
 {
     ADS.setGain(0);
     int dataFromSensorX = ADS.readADC(sensor);
-    int outData = (abs(dataFromSensorX - calibrationFactor)) / 2.55555;
+    int outData = (abs(dataFromSensorX - calibrationFactor)) / 0.9783;
     return outData;
 }    
