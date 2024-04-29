@@ -227,29 +227,7 @@ void loop() {
     } 
 
     
+  PulseCountOrTimerMe();
   
-   if(!doorCalibration && doorCalibrationOnce){
-    
-    if(totalPulseBehind + 5000 < nowTime){totalPulseBehind = nowTime; totalPulsebefore2 = totalPulsebefore1; totalPulsebefore1 = totalPulse;}
-
-    if (totalPulse == totalPulsebefore2){
-       doorCalibrationOnce = false;
-       
-      if(totalPulse > 9999 && totalPulse < 100000){
-        
-        PulseOver10000(totalPulse); 
-        checkTotalPulseOverOnce = false;
-        Serial.println(AddChecksum(160000 + totalPulse));
-        delay(100);
-        Serial.println(AddChecksum(210000 + totalPulseOver));
-        }
-        else{Serial.println(AddChecksum(160000 + totalPulse));}
-        delay(100);
-        Serial.println(AddChecksum(111116));
-                   
-          
-      }
-      
-    }  
 
 }
