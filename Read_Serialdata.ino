@@ -6,7 +6,7 @@
         lastChecksumResived = lastDataResived.substring(6).toInt();
 
         if(lastChecksumResived != lastDataResivedChecksum){Serial.println(AddChecksum(111121));}
-         
+
         else if(lastDataResivedIntNoChecksum == 111122){Serial.println(AddChecksum(lastDataSentNoChecksum.toInt()));}
         else if(loadcellCall){
           if(lastDataResivedIntNoChecksum == 411111){loadcellCall = false;}
@@ -24,7 +24,8 @@
         else if(lastDataResivedIntNoChecksum == 111111 && !printCurrentValues && !printForceValues){
               
               if(startTestOk && !testStarted){
-                Serial.println(AddChecksum(111112)); 
+                Serial.println(AddChecksum(111112));
+ 
                 lastDataSentNoChecksum = 111112; 
                 
                 maxForce = 0;
@@ -37,20 +38,21 @@
                 maxPulse100ms = 10000;
                 CalibrateCurrentSensor();
                 relayOpenDoorTime = nowTime + 500;
-                relayDoorSwitchtTime = nowTime + 300;
+                if(pulseTrueTimerFalse){relayDoorSwitchtTime = nowTime + 300;}
+                else{relayDoorSwitchtTime = nowTime + 1000;}
                 waitTimeForStart = nowTime + 5000;
                              
                 restetScaleOnec = true;
                 relayDoorSwitchOnce = true;
                
                 pulsesBetweenTime = 0;
-
                 loadcellCallFactorNum = readFloatFromEEPROM(loadcellCallFactorResultAdress) / readFloatFromEEPROM(loadcellCallFactorAdress);
 
                 scale.set_scale(loadcellCallFactorNum);
                 delay(100);
                 testStarted = true;
                 digitalWrite(relayOpenDoor, LOW);
+                
                                 
                 }
               else{Serial.println(AddChecksum(111113)); lastDataSentNoChecksum = 111113;}
@@ -93,5 +95,8 @@
                 sendTotalPulseOverOnce = true;
                 checkTotalPulseOverOnce = true;
           }
+
+        else if(lastDataResivedIntNoChecksum == 111118){pulseTrueTimerFalse = true;}  
+        else if(lastDataResivedIntNoChecksum == 111119){pulseTrueTimerFalse = false;}  
       
     }
