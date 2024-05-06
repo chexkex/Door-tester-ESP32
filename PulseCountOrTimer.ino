@@ -74,7 +74,11 @@ if(testStarted && (waitTimeForStart < nowTime)){
 
       if(tempTotalPulse > abs(totalDiffPulse)){closeToEndOnce = true; digitalWrite(relayDoorSwitch, LOW);}
 
-      if (totalPulse == totalPulsebefore2 && closeToEndOnce && newCurrent1 < 500){
+
+      if ((totalPulse == totalPulsebefore2 && closeToEndOnce && newCurrent1 < 500) || testError){
+
+      
+
 
             //Calling test is over          
             if(waitTimeWhenTestIsDone < nowTime){
@@ -95,6 +99,9 @@ if(testStarted && (waitTimeForStart < nowTime)){
                 closeToEndOnce = false;
                 sendTotalPulseOverOnce = true;
                 checkTotalPulseOverOnce = true;
+
+                testError = false;
+
                 
               }
           

@@ -1,7 +1,9 @@
 void secondTask(void * parameter) {
   while (true) {
     if(testStarted){
-      if(totalPulse > 500 && restetScaleOnec && pulseTrueTimerFalse){scale.tare(); restetScaleOnec = false;}
+
+      if(totalPulse > 500 && restetScaleOnec && pulseTrueTimerFalse && loadCellReset < nowTime){scale.tare(); restetScaleOnec = false;}
+
       else if(restetScaleOnec && waitTimeForStart + 5000 < nowTime){scale.tare(); restetScaleOnec = false;}
       else if(!restetScaleOnec){newForce = abs(10 * scale.get_units()); /*timeReadLoadcell = nowTime;*/}
       

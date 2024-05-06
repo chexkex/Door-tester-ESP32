@@ -36,6 +36,9 @@
                 totalDiffPulse = 0;
                 totalPulseBefore = 0;
                 maxPulse100ms = 10000;
+
+                loadCellReset = nowTime + 3000;
+
                 
                 CalibrateCurrentSensor();
                 relayOpenDoorTime = nowTime + 500;
