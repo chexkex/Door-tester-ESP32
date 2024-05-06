@@ -1,4 +1,4 @@
-//All in loop for now
+
 
 void PulseCountOrTimerMe(){
 
@@ -74,7 +74,7 @@ if(testStarted && (waitTimeForStart < nowTime)){
 
       if(tempTotalPulse > abs(totalDiffPulse)){closeToEndOnce = true; digitalWrite(relayDoorSwitch, LOW);}
 
-      if (totalPulse == totalPulsebefore2 && closeToEndOnce && newCurrent1 < 500){
+      if ((totalPulse == totalPulsebefore2 && closeToEndOnce && newCurrent1 < 500) || testError){
 
             //Calling test is over          
             if(waitTimeWhenTestIsDone < nowTime){
@@ -95,6 +95,7 @@ if(testStarted && (waitTimeForStart < nowTime)){
                 closeToEndOnce = false;
                 sendTotalPulseOverOnce = true;
                 checkTotalPulseOverOnce = true;
+                testError = false;
                 
               }
           
@@ -104,8 +105,10 @@ if(testStarted && (waitTimeForStart < nowTime)){
     }
     else{
           if(maxForce > 10){digitalWrite(relayDoorSwitch, LOW);}
+          Serial.println(newCurrent1);
           
-          if(maxForce > 10 && waitTimeWhenTestIsDone < nowTime && newCurrent1 < 500){
+          if(maxForce > 10 &&  newCurrent1 < 100){
+                if(waitTimeWhenTestIsDone < nowTime){
                 Serial.println(AddChecksum(111114));
                 lastDataSentNoChecksum = 111114;
                 waitTimeDataSend = nowTime;
@@ -122,7 +125,7 @@ if(testStarted && (waitTimeForStart < nowTime)){
                 closeToEndOnce = false;
                 sendTotalPulseOverOnce = true;
                 checkTotalPulseOverOnce = true;
-                digitalWrite(relayDoorSwitch, LOW);
+                digitalWrite(relayDoorSwitch, LOW);}
                 }
 
           else{waitTimeWhenTestIsDone = nowTime + 2000;}
