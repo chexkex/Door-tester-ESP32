@@ -36,15 +36,14 @@
                 totalDiffPulse = 0;
                 totalPulseBefore = 0;
                 maxPulse100ms = 10000;
-
                 loadCellReset = nowTime + 3000;
-
                 
                 CalibrateCurrentSensor();
-                relayOpenDoorTime = nowTime + 500;
+                relayOpenDoorTime = nowTime + 1000;
                 if(pulseTrueTimerFalse){relayDoorSwitchtTime = nowTime + 300;}
                 else{relayDoorSwitchtTime = nowTime + 1000;}
                 waitTimeForStart = nowTime + 5000;
+                timeForStart = nowTime + 500;
                              
                 restetScaleOnec = true;
                 relayDoorSwitchOnce = true;
@@ -55,7 +54,9 @@
                 scale.set_scale(loadcellCallFactorNum);
                 delay(100);
                 testStarted = true;
-                digitalWrite(relayOpenDoor, LOW);
+                openDoorOneTime = true;
+                
+                
                 
                                 
                 }
